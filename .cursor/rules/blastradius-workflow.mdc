@@ -33,6 +33,13 @@ Do not default to all-in-Docker unless the owner asks.
 3. Incremental commits per plan §25 — one logical slice per commit; no mega-commit.
 4. Do not include `PROJECT_BLASTRADIUS_PLAN.md` in this repo.
 
+## Attribution (strict — never break)
+
+1. **Do not** mention Cursor, Copilot, or any AI coding tool in commits, README, docs, comments, or marketing copy for this project.
+2. **Do not** add `Co-authored-by: Cursor` (or any Cursor/AI co-author) trailers — no `--trailer` flags for that.
+3. After every commit, verify `git log -1 --format=%B` has **no** Cursor/AI trailer. If one was auto-injected, strip it **before push** (unpushed only) via `git commit-tree` rewrite — plain `--amend` may get re-injected by hooks.
+4. Never rewrite already-pushed history to strip trailers unless the owner explicitly approves force-push.
+
 ## Decision authority
 
 - Ambiguous product/tech choices → **ask the owner** before proceeding.

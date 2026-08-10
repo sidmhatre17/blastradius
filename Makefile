@@ -28,8 +28,10 @@ ui:
 	@exit 1
 
 migrate:
-	@echo "Migrate stub — Alembic lands in models slice"
-	@exit 1
+	$(UV) run alembic upgrade head
+
+migrate-rev:
+	$(UV) run alembic revision --autogenerate -m "$(m)"
 
 seed:
 	@echo "Seed stub — /demo/seed lands later"
