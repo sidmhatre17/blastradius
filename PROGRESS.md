@@ -17,9 +17,8 @@ Conflict order: **§32 > §31 > §29 > earlier**
 | Branch | `main` |
 | Plan file in repo | **No** |
 | Topology | Docker = postgres+redis only; api/worker/ui on host via `uv`; Ollama on host |
-| Commit gate | Ask before every local commit |
-| Push gate | Ask after owner review |
-| Attribution | No Cursor/AI mentions; strip auto `Co-authored-by: Cursor` via `commit-tree` before push |
+| Commit / push gates | Ask before commit; ask before push |
+| Attribution | No Cursor trailers (strip via `commit-tree` if injected) |
 
 Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
@@ -29,58 +28,60 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
 | # | Commit | Status | SHA / notes |
 |---|--------|--------|-------------|
-| 1 | `chore: scaffold blastradius compose and settings` | **Pushed** | `541a162` |
-| 2 | `chore: add db models and alembic migration` | **Pushed** | `f4e3d13` |
-| 3 | `feat: add payorbit sample world and expected fixtures` | **Pushed** | `bdb3829` |
-| 4 | `feat: parse diffs and build import graph` | **Pushed** | `bbb4b10` |
-| 5 | `feat: incident ingest and boosted retrieval` | **Pushed** | `9bd3f92` |
-| 6 | `feat: deterministic risk scorer v1` | **Ready to commit** | verified |
-| 7 | `feat: analyze API worker and explainers` | Not started | |
-| 8 | `feat: streamlit demo ui` | Not started | |
-| 9 | `docs: readme demo script and competitor notes` | Not started | |
-| 10 | `chore: add eval harness and demo artifacts templates` | Not started | |
-| 11 | `chore: release v0.1.0` | Not started | |
+| 1 | scaffold | **Pushed** | `541a162` |
+| 2 | db models + alembic | **Pushed** | `f4e3d13` |
+| 3 | payorbit sample world | **Pushed** | `bdb3829` |
+| 4 | diffs + import graph | **Pushed** | `bbb4b10` |
+| 5 | incident ingest + retrieval | **Pushed** | `9bd3f92` |
+| 6 | risk scorer v1 | **Pushed** | `19da17b` |
+| 7 | analyze API + explainers + worker | **Ready to commit** | verified |
+| 8 | streamlit demo ui | Not started | |
+| 9 | docs | Not started | |
+| 10 | eval harness | Not started | |
+| 11 | release v0.1.0 | Not started | |
 
 ---
 
-## What already exists
+## What already exists (through 6)
 
-### Through commit 5
+Full ingest/retrieval/scoring stack + PayOrbit fixtures + expected.json gates.
 
-- Health, repos API, incidents API, PayOrbit sample world
-- Diff/import/graph, embeddings (ST/Hash/Ollama), Chroma, retrieval + overlap boost
-- Postgres + Alembic
+### Analyze + explainers + worker (commit 7 — pending)
 
-### Risk scorer v1 (commit 6 — pending push)
+| Piece | Path |
+|-------|------|
+| Template + Ollama explainers | `services/explainer.py` (`explain_with_fallback`) |
+| Analyze orchestrator | `services/analyze.py` (cache key includes `scorer_version=v1`) |
+| API | `POST/GET /api/v1/analyze` (`async` bool) |
+| arq worker | `workers/settings.py` — `make worker` |
+| Tests | `tests/test_explainer.py`, `tests/test_analyze.py` |
 
-- `services/risk_scorer.py` — locked weights §11.7, all six factors, docs-only `incident_heat=0` / `test_gap=0`
-- `SCORER_VERSION = "v1"`
-- Tests: `tests/test_risk_scorer.py`, `tests/test_expected_bands.py` (expected.json gates)
-- **Sample calibration (not weight changes):**
-  - `INC-1042` severity → `critical` (so auth middleware PR can reach high with locked formula)
-  - Retrieval: exact file-overlap floors similarity at `0.85` before boost (CI hash mode)
+**Behavior:** sync analyze is default; async enqueues `run_analysis` to Redis/arq. LLM failure → template fallback. CI uses template. `cost_usd=0.0`. Diff limit 500KB.
 
-**Verified:** 27 tests passed (`APP_MODE=ci`), ruff clean; expected.json bands OK.
+**Verified:** 30 tests passed (`APP_MODE=ci`), ruff clean; safe PR low vs common-client high/critical.
 
 ---
 
 ## Current work / next actions
 
-1. Commit/push slice 6 after owner OK
-2. Next: **analyze API + TemplateExplainer + OllamaExplainer + arq worker**
+1. Commit/push slice 7 after owner OK
+2. Next: **Streamlit demo UI**
 
 ---
 
 ## Do not recreate
 
-- Do not change scorer **weights** unless all expected.json fails and owner approves; prefer sample/retrieval calibration
+- Do not change scorer weights without owner approval
 - Do not reimplement prior slices
-- Do not commit `PROJECT_BLASTRADIUS_PLAN.md`
+- Do not commit the plan markdown file
 
 ---
 
 ## Local runtime notes
 
-- `make up` → `make migrate` → `make api`
-- CI: `APP_MODE=ci EMBEDDING_PROVIDER=hash`
-- Chroma: `./data/chroma` (gitignored)
+```bash
+make up && make migrate
+make api          # host
+make worker       # host (needed only for async analyze)
+APP_MODE=ci EMBEDDING_PROVIDER=hash LLM_PROVIDER=template uv run pytest -q
+```

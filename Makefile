@@ -20,8 +20,7 @@ api:
 	$(UV) run uvicorn blastradius.main:app --reload --host $(API_HOST) --port $(API_PORT)
 
 worker:
-	@echo "Worker stub — arq settings land in a later slice"
-	@exit 1
+	$(UV) run arq blastradius.workers.settings.WorkerSettings
 
 ui:
 	@echo "UI stub — Streamlit app lands in a later slice"
