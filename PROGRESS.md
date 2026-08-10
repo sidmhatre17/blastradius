@@ -31,8 +31,8 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 |---|--------|--------|-------------|
 | 1 | `chore: scaffold blastradius compose and settings` | **Pushed** | `541a162` (may include historical Cursor trailer — leave as-is) |
 | 2 | `chore: add db models and alembic migration` | **Pushed** | `f4e3d13` (trailer-free) |
-| 3 | `feat: add payorbit sample world and expected fixtures` | **Ready to commit** (local, uncommitted) | See Current work |
-| 4 | `feat: parse diffs and build import graph` | Not started | |
+| 3 | `feat: add payorbit sample world and expected fixtures` | **Pushed** | `bdb3829` (+ `PROGRESS.md`) |
+| 4 | `feat: parse diffs and build import graph` | **Ready to commit** | local; verified |
 | 5 | `feat: incident ingest and boosted retrieval` | Not started | |
 | 6 | `feat: deterministic risk scorer v1` | Not started | |
 | 7 | `feat: analyze API worker and explainers` | Not started | |
@@ -52,53 +52,56 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 - `.env.example`, `.gitignore`, `LICENSE`, minimal `README.md`
 - Package: `src/blastradius/` with `config.py`, `deps.py`, `main.py`, `api/health.py`
 - Placeholders: `apps/ui/app.py`, `artifacts/.gitkeep`, `scripts/.gitkeep`
-- Health: `GET /health` (later upgraded to probe DB)
+- Health: `GET /health` (DB probe when Postgres up)
 
 ### DB + Alembic (commit 2)
 
-- Domain enums: `src/blastradius/domain/enums.py` (`RepoStatus`, `EdgeType`, `Severity`, `RiskTier`, `AnalysisStatus`, `AppMode`)
-- Models: `Repo`, `FileNode`, `Edge`, `Incident`, `IncidentChunk`, `CodeChunk`, `Analysis`
+- Domain enums + models: `Repo`, `FileNode`, `Edge`, `Incident`, `IncidentChunk`, `CodeChunk`, `Analysis`
 - Cascades: repo delete → files/edges/analyses/code_chunks; **incidents independent of repo**
-- Session: `src/blastradius/db/session.py` (`check_db`, async engine)
-- Alembic: `alembic.ini`, `alembic/env.py` (async), revision `499df124434b_initial_schema`
-- `make migrate` → `uv run alembic upgrade head`
-- Tests: `tests/test_models.py` (4 unit tests)
-- Health returns `db: ok` when Postgres is up
+- Alembic revision `499df124434b_initial_schema`; `make migrate`
+- Tests: `tests/test_models.py`
 
-### PayOrbit sample world (pending commit 3)
+### PayOrbit sample world (commit 3)
 
-Paths under `data/`:
+- `data/sample_repo/`, 12 incidents, 6 diffs, `expected.json`, `seed_manifest.json`
+- **7** locked `http_client` importers
 
-| Path | Contents |
-|------|----------|
-| `data/sample_repo/` | Full PayOrbit tree + `SERVICE_OWNERS.yaml` |
-| `data/sample_incidents/` | **12** markdown incidents (`INC-0410` … `INC-1042`) |
-| `data/sample_prs/` | **6** diffs + `expected.json` |
-| `data/seed_manifest.json` | Seed paths, importer lock list, gold IDs |
+### Diff + import graph (commit 4 — pending push)
 
-**Locked `http_client` importers (7):**
+| Module | Path |
+|--------|------|
+| Diff parser | `src/blastradius/services/diff_parser.py` |
+| Import parser | `src/blastradius/services/import_parser.py` |
+| Code graph / blast radius | `src/blastradius/services/code_graph.py` |
+| Repo ingest (Postgres) | `src/blastradius/services/repo_ingest.py` |
+| Repos API | `src/blastradius/api/repos.py` |
 
-1. `services/api_gateway/app.py`
-2. `services/api_gateway/auth/middleware.py`
-3. `services/api_gateway/routes/billing.py`
-4. `services/billing_worker/worker.py`
-5. `services/billing_worker/retry.py`
-6. `services/notify_service/sender.py`
-7. `services/auth_service/validate.py`
+**API**
 
-**Sample PRs:** `pr_safe_docs`, `pr_notify_copy`, `pr_auth_middleware`, `pr_common_client`, `pr_billing_retry`, `pr_mixed`
+- `POST /api/v1/repos/ingest` `{name, path}` (path allowlisted under `SAMPLE_ROOT` / `REPOS_PATH`)
+- `GET /api/v1/repos`, `GET /api/v1/repos/{id}`
+- `GET /api/v1/repos/{id}/graph?depth=&seed=`
 
-**Gold incident links:** INC-1042↔auth middleware, INC-0991↔http_client, INC-0888↔billing retry, plus distractors INC-0666/INC-0650
+**Behavior locked in**
 
-Verified locally: importer count ≥6, hotspot LOC 30–80, diff paths resolve, frontmatter keys present.
+- Fan-out = **importers** (edges into file)
+- Blast BFS prefers **reverse imports**; `packages/**` seeds pull all importers
+- Virtual `belongs_to` edges in graph projection
+- Ingest stores files/edges/code_chunks in Postgres; **Chroma upsert deferred to commit 5**
+- Owners from `SERVICE_OWNERS.yaml` → `Repo.owners_json`
+
+**Verified**
+
+- `pytest`: 17 passed
+- `ruff`: clean
+- API smoke: ingest PayOrbit → graph seed `http_client` → **7 importers**
 
 ---
 
 ## Current work / next actions
 
-1. Commit slice 3: sample world **+ this `PROGRESS.md`** (after owner OK)
-2. Push when owner says push
-3. Next build slice: **diff parser + import parser + repo ingest + graph tests** (plan commit 4)
+1. Commit/push slice 4 after owner OK
+2. Next: **incident ingest + embeddings (ST/hash) + Chroma + retrieval + overlap boost** (plan commit 5)
 
 ---
 
@@ -106,7 +109,8 @@ Verified locally: importer count ≥6, hotspot LOC 30–80, diff paths resolve, 
 
 - Do not re-scaffold compose/settings/health
 - Do not re-author DB models/migration `499df124434b`
-- Do not regenerate PayOrbit paths/importers/gold incidents once commit 3 lands — calibrate later by editing sample data if scorer gates fail, not by inventing parallel trees
+- Do not regenerate PayOrbit trees/importers/gold incidents — calibrate sample data later if needed
+- Do not reimplement diff/import/graph parsers once commit 4 lands
 - Do not `gh repo create`; remote already exists
 - Do not commit `PROJECT_BLASTRADIUS_PLAN.md`
 - Do not require paid APIs for MVP
