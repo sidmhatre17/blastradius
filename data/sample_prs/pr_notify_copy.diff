@@ -1,0 +1,11 @@
+--- a/services/notify_service/templates.py
++++ b/services/notify_service/templates.py
+@@ -3,7 +3,7 @@
+ from __future__ import annotations
+ 
+ TEMPLATES = {
+-    "payment_succeeded": "Hi {name}, your payment of {amount} {currency} succeeded.",
++    "payment_succeeded": "Hello {name} — PayOrbit received {amount} {currency}. Thank you!",
+     "payment_failed": "Hi {name}, we could not process {amount} {currency}. Please update your card.",
+     "retry_exhausted": "Ops alert: billing retry exhausted for charge {charge_id}: {reason}",
+     "welcome": "Welcome to PayOrbit, {name}!",

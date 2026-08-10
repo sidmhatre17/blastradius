@@ -1,0 +1,15 @@
+--- a/services/billing_worker/retry.py
++++ b/services/billing_worker/retry.py
+@@ -19,9 +19,9 @@
+ 
+ @dataclass
+ class RetryPolicy:
+-    max_attempts: int = 3
+-    base_delay_ms: int = 50
+-    jitter_ms: int = 10
++    max_attempts: int = 8
++    base_delay_ms: int = 200
++    jitter_ms: int = 50
+ 
+ 
+ def with_retries(policy: RetryPolicy, fn: Callable[[], T]) -> T:

@@ -1,0 +1,28 @@
+{
+  "sample_repo": {
+    "name": "payorbit",
+    "path": "sample_repo",
+    "owners_file": "sample_repo/SERVICE_OWNERS.yaml"
+  },
+  "incidents_dir": "sample_incidents",
+  "prs_dir": "sample_prs",
+  "expected_file": "sample_prs/expected.json",
+  "required_http_client_importers": [
+    "services/api_gateway/app.py",
+    "services/api_gateway/auth/middleware.py",
+    "services/api_gateway/routes/billing.py",
+    "services/billing_worker/worker.py",
+    "services/billing_worker/retry.py",
+    "services/notify_service/sender.py",
+    "services/auth_service/validate.py"
+  ],
+  "gold_incidents": [
+    "INC-1042",
+    "INC-0991",
+    "INC-0888",
+    "INC-0765",
+    "INC-0701",
+    "INC-0666",
+    "INC-0650"
+  ]
+}

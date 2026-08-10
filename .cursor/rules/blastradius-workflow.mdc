@@ -26,6 +26,12 @@ Prefer:
 
 Do not default to all-in-Docker unless the owner asks.
 
+## Progress log (strict)
+
+- Keep **`PROGRESS.md`** at repo root up to date.
+- Before asking to commit a slice: update `PROGRESS.md` with what was added, verification, commit-map status, and **Do not recreate** notes.
+- Read `PROGRESS.md` at the start of each slice so existing work is not duplicated.
+
 ## Git / review gates (critical)
 
 1. **Never commit without asking the owner first.** When a slice is ready, summarize files + proposed commit message and wait for explicit OK.

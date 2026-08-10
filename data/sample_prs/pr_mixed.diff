@@ -1,0 +1,21 @@
+--- a/services/notify_service/templates.py
++++ b/services/notify_service/templates.py
+@@ -6,7 +6,7 @@
+     "payment_succeeded": "Hi {name}, your payment of {amount} {currency} succeeded.",
+     "payment_failed": "Hi {name}, we could not process {amount} {currency}. Please update your card.",
+     "retry_exhausted": "Ops alert: billing retry exhausted for charge {charge_id}: {reason}",
+-    "welcome": "Welcome to PayOrbit, {name}!",
++    "welcome": "Welcome aboard, {name} — your PayOrbit wallet is ready.",
+ }
+ 
+ 
+--- a/packages/common/metrics.py
++++ b/packages/common/metrics.py
+@@ -43,6 +43,6 @@
+         return ordered[idx]
+ 
+ 
+-REQUESTS = Counter("payorbit_requests_total")
++REQUESTS = Counter("payorbit_requests_total")  # keep labels low-cardinality
+ ERRORS = Counter("payorbit_errors_total")
+ LATENCY = Timer("payorbit_request_latency_seconds")

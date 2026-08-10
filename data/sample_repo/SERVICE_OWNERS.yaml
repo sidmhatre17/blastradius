@@ -1,0 +1,6 @@
+services:
+  auth_service: { team: identity, criticality: high }
+  api_gateway: { team: edge, criticality: high }
+  billing_worker: { team: money, criticality: critical }
+  notify_service: { team: growth, criticality: medium }
+  common: { team: platform, criticality: critical }

@@ -1,0 +1,25 @@
+{
+  "pr_safe_docs.diff": {
+    "tier_in": ["low"],
+    "max_score": 30
+  },
+  "pr_notify_copy.diff": {
+    "tier_in": ["low", "medium"]
+  },
+  "pr_auth_middleware.diff": {
+    "tier_in": ["high", "critical"],
+    "incident_top3": ["INC-1042"]
+  },
+  "pr_common_client.diff": {
+    "tier_in": ["high", "critical"],
+    "min_score": 60,
+    "incident_top3": ["INC-0991"]
+  },
+  "pr_billing_retry.diff": {
+    "tier_in": ["medium", "high", "critical"],
+    "incident_top3": ["INC-0888"]
+  },
+  "pr_mixed.diff": {
+    "tier_in": ["medium", "high", "critical"]
+  }
+}

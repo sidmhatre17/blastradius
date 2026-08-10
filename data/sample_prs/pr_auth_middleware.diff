@@ -1,0 +1,11 @@
+--- a/services/api_gateway/auth/middleware.py
++++ b/services/api_gateway/auth/middleware.py
+@@ -13,7 +13,7 @@
+ 
+ # Soft deadline used when auth_service is slow; historically caused cascades
+ # when set below auth p95 latency (see INC-1042).
+-AUTH_DEADLINE_MS = 800
++AUTH_DEADLINE_MS = 250
+ 
+ 
+ class AuthMiddleware:
