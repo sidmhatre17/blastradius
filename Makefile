@@ -23,8 +23,7 @@ worker:
 	$(UV) run arq blastradius.workers.settings.WorkerSettings
 
 ui:
-	@echo "UI stub — Streamlit app lands in a later slice"
-	@exit 1
+	API_BASE_URL=http://127.0.0.1:$(API_PORT) $(UV) run streamlit run apps/ui/app.py --server.port 8501 --server.address 127.0.0.1
 
 migrate:
 	$(UV) run alembic upgrade head
