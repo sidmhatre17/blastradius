@@ -108,7 +108,9 @@ async def retrieve_similar_incidents(
     for inc in incidents:
         files = [str(x) for x in (inc.files_json or [])]
         services = [str(x) for x in (inc.services_json or [])]
-        overlaps = bool(set(files) & set(changed_files) or set(services) & set(affected_services))
+        overlaps_files = bool(set(files) & set(changed_files))
+        overlaps_services = bool(set(services) & set(affected_services))
+        overlaps = overlaps_files or overlaps_services
         if not overlaps and inc.incident_id not in by_id:
             continue
         if inc.incident_id not in by_id:
@@ -118,6 +120,9 @@ async def retrieve_similar_incidents(
                 "title": inc.title,
                 "severity": inc.severity,
             }
+        # Exact file overlap is strong evidence (esp. HashEmbedder / CI).
+        if overlaps_files:
+            by_id[inc.incident_id]["score"] = max(float(by_id[inc.incident_id]["score"]), 0.85)
         by_id[inc.incident_id]["files"] = files
         by_id[inc.incident_id]["services"] = services
         by_id[inc.incident_id]["title"] = inc.title

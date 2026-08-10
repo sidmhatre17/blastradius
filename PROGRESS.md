@@ -33,8 +33,8 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 | 2 | `chore: add db models and alembic migration` | **Pushed** | `f4e3d13` |
 | 3 | `feat: add payorbit sample world and expected fixtures` | **Pushed** | `bdb3829` |
 | 4 | `feat: parse diffs and build import graph` | **Pushed** | `bbb4b10` |
-| 5 | `feat: incident ingest and boosted retrieval` | **Ready to commit** | verified locally |
-| 6 | `feat: deterministic risk scorer v1` | Not started | |
+| 5 | `feat: incident ingest and boosted retrieval` | **Pushed** | `9bd3f92` |
+| 6 | `feat: deterministic risk scorer v1` | **Ready to commit** | verified |
 | 7 | `feat: analyze API worker and explainers` | Not started | |
 | 8 | `feat: streamlit demo ui` | Not started | |
 | 9 | `docs: readme demo script and competitor notes` | Not started | |
@@ -45,47 +45,42 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
 ## What already exists
 
-### Through commit 4
+### Through commit 5
 
-- FastAPI health + repos ingest/list/get/graph
-- Diff/import parsers, code graph (reverse-import BFS), PayOrbit sample world
-- Postgres models + Alembic `499df124434b`
+- Health, repos API, incidents API, PayOrbit sample world
+- Diff/import/graph, embeddings (ST/Hash/Ollama), Chroma, retrieval + overlap boost
+- Postgres + Alembic
 
-### Incident ingest + retrieval (commit 5 — pending push)
+### Risk scorer v1 (commit 6 — pending push)
 
-| Module | Path |
-|--------|------|
-| Embeddings | `services/embeddings.py` — `HashEmbedder`, `STEmbedder`, `OllamaEmbedder`, `build_embedder` |
-| Vector store | `services/vector_store.py` — Chroma `code_chunks` / `incident_chunks`, cosine, stamp drop+rebuild |
-| Incident ingest | `services/incident_ingest.py` — frontmatter validate, chunk, upsert |
-| Retrieval | `services/retrieval.py` — query pack, overlap boost (+0.15 file / +0.10 service), metadata candidate expansion for CI |
-| API | `api/incidents.py` — `POST /incidents/ingest`, `GET /incidents`, `GET /incidents/{id}` |
-| Repo ingest | now also upserts **code** vectors to Chroma |
+- `services/risk_scorer.py` — locked weights §11.7, all six factors, docs-only `incident_heat=0` / `test_gap=0`
+- `SCORER_VERSION = "v1"`
+- Tests: `tests/test_risk_scorer.py`, `tests/test_expected_bands.py` (expected.json gates)
+- **Sample calibration (not weight changes):**
+  - `INC-1042` severity → `critical` (so auth middleware PR can reach high with locked formula)
+  - Retrieval: exact file-overlap floors similarity at `0.85` before boost (CI hash mode)
 
-**CI recall:** HashEmbedder + overlap boost + DB metadata expansion so gold incidents land in top3 without model downloads.
-
-**Verified:** `APP_MODE=ci` → **22 tests passed**, ruff clean. Gold pairs INC-0991 / INC-1042 / INC-0888 in top3.
+**Verified:** 27 tests passed (`APP_MODE=ci`), ruff clean; expected.json bands OK.
 
 ---
 
 ## Current work / next actions
 
-1. Commit/push slice 5 after owner OK
-2. Next: **deterministic risk scorer v1** + expected.json band tests
+1. Commit/push slice 6 after owner OK
+2. Next: **analyze API + TemplateExplainer + OllamaExplainer + arq worker**
 
 ---
 
 ## Do not recreate
 
-- Do not re-scaffold / re-author models migration / PayOrbit trees / diff-graph parsers
-- Do not reimplement embeddings/vector/retrieval once commit 5 lands
-- Do not commit `PROJECT_BLASTRADIUS_PLAN.md` or require paid APIs
+- Do not change scorer **weights** unless all expected.json fails and owner approves; prefer sample/retrieval calibration
+- Do not reimplement prior slices
+- Do not commit `PROJECT_BLASTRADIUS_PLAN.md`
 
 ---
 
 ## Local runtime notes
 
 - `make up` → `make migrate` → `make api`
-- CI tests: `APP_MODE=ci EMBEDDING_PROVIDER=hash`
-- Local demo embeddings: sentence-transformers (downloads once)
-- Chroma path: `./data/chroma` (gitignored)
+- CI: `APP_MODE=ci EMBEDDING_PROVIDER=hash`
+- Chroma: `./data/chroma` (gitignored)
