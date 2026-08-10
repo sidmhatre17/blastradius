@@ -1,0 +1,94 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: blastradius
+      POSTGRES_PASSWORD: blastradius
+      POSTGRES_DB: blastradius
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blastradius -d blastradius"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Optional full-Docker path (slower embeddings on Mac). Prefer host `make api`.
+  api:
+    profiles: ["full"]
+    build: .
+    command: uvicorn blastradius.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://blastradius:blastradius@postgres:5432/blastradius
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      CHROMA_PATH: /data/chroma
+      REPOS_PATH: /data/repos
+      SAMPLE_ROOT: /app/data
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/data/chroma
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  worker:
+    profiles: ["full"]
+    build: .
+    command: arq blastradius.workers.settings.WorkerSettings
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://blastradius:blastradius@postgres:5432/blastradius
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      CHROMA_PATH: /data/chroma
+      REPOS_PATH: /data/repos
+      SAMPLE_ROOT: /app/data
+    volumes:
+      - chroma_data:/data/chroma
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ui:
+    profiles: ["full"]
+    build: .
+    command: streamlit run apps/ui/app.py --server.port 8501 --server.address 0.0.0.0
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:

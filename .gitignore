@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Env & secrets
+.env
+*.pem
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Runtime data
+data/chroma/
+**/chroma/
+*.log
+
+# Artifacts (keep placeholder)
+artifacts/*
+!artifacts/.gitkeep
+
+# uv / tooling
+.python-version
