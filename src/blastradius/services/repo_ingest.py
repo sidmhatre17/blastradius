@@ -99,8 +99,15 @@ async def ingest_repo(
     *,
     name: str,
     root: Path,
+    vector_store: Any | None = None,
 ) -> Repo:
-    """Walk repo, upsert files/edges/code chunks in Postgres. Chroma deferred to next slice."""
+    """Walk repo, upsert files/edges/code chunks in Postgres + Chroma code_chunks."""
+    from blastradius.services.embeddings import build_embedder
+    from blastradius.services.vector_store import CODE_COLLECTION, VectorStore
+
+    store = vector_store or VectorStore(embedder=build_embedder())
+    store.ensure_collection(CODE_COLLECTION)
+
     repo = Repo(
         name=name,
         root_path=str(root),
@@ -151,20 +158,52 @@ async def ingest_repo(
                 )
             )
 
+        vector_pending: list[tuple[CodeChunk, str, FileNode, int, int]] = []
+
         for rel, text in texts.items():
             if not rel.endswith(".py"):
                 continue
             node = path_to_node[rel]
             for start, end, chunk_text in chunk_lines(text):
-                session.add(
-                    CodeChunk(
-                        file_id=node.id,
-                        text=chunk_text,
-                        start_line=start,
-                        end_line=end,
-                        vector_id=None,
-                    )
+                chunk = CodeChunk(
+                    file_id=node.id,
+                    text=chunk_text,
+                    start_line=start,
+                    end_line=end,
+                    vector_id=None,
                 )
+                session.add(chunk)
+                vector_pending.append((chunk, rel, node, start, end))
+
+        await session.flush()
+
+        vector_ids: list[str] = []
+        vector_docs: list[str] = []
+        vector_metas: list[dict[str, Any]] = []
+        for chunk, rel, node, start, end in vector_pending:
+            vid = str(chunk.id)
+            chunk.vector_id = vid
+            hint = f"path: {rel}\nservice: {node.service_name or ''}\n\n"
+            vector_ids.append(vid)
+            vector_docs.append(hint + chunk.text)
+            vector_metas.append(
+                {
+                    "repo_id": str(repo.id),
+                    "file_id": str(node.id),
+                    "path": rel,
+                    "service_name": node.service_name or "",
+                    "start_line": start,
+                    "end_line": end,
+                }
+            )
+
+        store.delete_where(CODE_COLLECTION, {"repo_id": str(repo.id)})
+        store.upsert(
+            CODE_COLLECTION,
+            ids=vector_ids,
+            documents=vector_docs,
+            metadatas=vector_metas,
+        )
 
         repo.status = RepoStatus.READY.value
         await session.commit()

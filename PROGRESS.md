@@ -19,7 +19,7 @@ Conflict order: **§32 > §31 > §29 > earlier**
 | Topology | Docker = postgres+redis only; api/worker/ui on host via `uv`; Ollama on host |
 | Commit gate | Ask before every local commit |
 | Push gate | Ask after owner review |
-| Attribution | No Cursor/AI mentions in repo text; no `Co-authored-by: Cursor` trailers (strip via `commit-tree` if hooks re-inject). Historical scaffold commit may still have trailer — leave it |
+| Attribution | No Cursor/AI mentions; strip auto `Co-authored-by: Cursor` via `commit-tree` before push |
 
 Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
@@ -29,11 +29,11 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
 | # | Commit | Status | SHA / notes |
 |---|--------|--------|-------------|
-| 1 | `chore: scaffold blastradius compose and settings` | **Pushed** | `541a162` (may include historical Cursor trailer — leave as-is) |
-| 2 | `chore: add db models and alembic migration` | **Pushed** | `f4e3d13` (trailer-free) |
-| 3 | `feat: add payorbit sample world and expected fixtures` | **Pushed** | `bdb3829` (+ `PROGRESS.md`) |
-| 4 | `feat: parse diffs and build import graph` | **Ready to commit** | local; verified |
-| 5 | `feat: incident ingest and boosted retrieval` | Not started | |
+| 1 | `chore: scaffold blastradius compose and settings` | **Pushed** | `541a162` |
+| 2 | `chore: add db models and alembic migration` | **Pushed** | `f4e3d13` |
+| 3 | `feat: add payorbit sample world and expected fixtures` | **Pushed** | `bdb3829` |
+| 4 | `feat: parse diffs and build import graph` | **Pushed** | `bbb4b10` |
+| 5 | `feat: incident ingest and boosted retrieval` | **Ready to commit** | verified locally |
 | 6 | `feat: deterministic risk scorer v1` | Not started | |
 | 7 | `feat: analyze API worker and explainers` | Not started | |
 | 8 | `feat: streamlit demo ui` | Not started | |
@@ -45,80 +45,47 @@ Durable rules: `.cursor/rules/blastradius-workflow.mdc`
 
 ## What already exists
 
-### Scaffold (commit 1)
+### Through commit 4
 
-- `pyproject.toml` + `uv.lock`, `Makefile`, `Dockerfile`, `docker-compose.yml`
-- Compose default services: **postgres**, **redis**; api/worker/ui under profile `full`
-- `.env.example`, `.gitignore`, `LICENSE`, minimal `README.md`
-- Package: `src/blastradius/` with `config.py`, `deps.py`, `main.py`, `api/health.py`
-- Placeholders: `apps/ui/app.py`, `artifacts/.gitkeep`, `scripts/.gitkeep`
-- Health: `GET /health` (DB probe when Postgres up)
+- FastAPI health + repos ingest/list/get/graph
+- Diff/import parsers, code graph (reverse-import BFS), PayOrbit sample world
+- Postgres models + Alembic `499df124434b`
 
-### DB + Alembic (commit 2)
-
-- Domain enums + models: `Repo`, `FileNode`, `Edge`, `Incident`, `IncidentChunk`, `CodeChunk`, `Analysis`
-- Cascades: repo delete → files/edges/analyses/code_chunks; **incidents independent of repo**
-- Alembic revision `499df124434b_initial_schema`; `make migrate`
-- Tests: `tests/test_models.py`
-
-### PayOrbit sample world (commit 3)
-
-- `data/sample_repo/`, 12 incidents, 6 diffs, `expected.json`, `seed_manifest.json`
-- **7** locked `http_client` importers
-
-### Diff + import graph (commit 4 — pending push)
+### Incident ingest + retrieval (commit 5 — pending push)
 
 | Module | Path |
 |--------|------|
-| Diff parser | `src/blastradius/services/diff_parser.py` |
-| Import parser | `src/blastradius/services/import_parser.py` |
-| Code graph / blast radius | `src/blastradius/services/code_graph.py` |
-| Repo ingest (Postgres) | `src/blastradius/services/repo_ingest.py` |
-| Repos API | `src/blastradius/api/repos.py` |
+| Embeddings | `services/embeddings.py` — `HashEmbedder`, `STEmbedder`, `OllamaEmbedder`, `build_embedder` |
+| Vector store | `services/vector_store.py` — Chroma `code_chunks` / `incident_chunks`, cosine, stamp drop+rebuild |
+| Incident ingest | `services/incident_ingest.py` — frontmatter validate, chunk, upsert |
+| Retrieval | `services/retrieval.py` — query pack, overlap boost (+0.15 file / +0.10 service), metadata candidate expansion for CI |
+| API | `api/incidents.py` — `POST /incidents/ingest`, `GET /incidents`, `GET /incidents/{id}` |
+| Repo ingest | now also upserts **code** vectors to Chroma |
 
-**API**
+**CI recall:** HashEmbedder + overlap boost + DB metadata expansion so gold incidents land in top3 without model downloads.
 
-- `POST /api/v1/repos/ingest` `{name, path}` (path allowlisted under `SAMPLE_ROOT` / `REPOS_PATH`)
-- `GET /api/v1/repos`, `GET /api/v1/repos/{id}`
-- `GET /api/v1/repos/{id}/graph?depth=&seed=`
-
-**Behavior locked in**
-
-- Fan-out = **importers** (edges into file)
-- Blast BFS prefers **reverse imports**; `packages/**` seeds pull all importers
-- Virtual `belongs_to` edges in graph projection
-- Ingest stores files/edges/code_chunks in Postgres; **Chroma upsert deferred to commit 5**
-- Owners from `SERVICE_OWNERS.yaml` → `Repo.owners_json`
-
-**Verified**
-
-- `pytest`: 17 passed
-- `ruff`: clean
-- API smoke: ingest PayOrbit → graph seed `http_client` → **7 importers**
+**Verified:** `APP_MODE=ci` → **22 tests passed**, ruff clean. Gold pairs INC-0991 / INC-1042 / INC-0888 in top3.
 
 ---
 
 ## Current work / next actions
 
-1. Commit/push slice 4 after owner OK
-2. Next: **incident ingest + embeddings (ST/hash) + Chroma + retrieval + overlap boost** (plan commit 5)
+1. Commit/push slice 5 after owner OK
+2. Next: **deterministic risk scorer v1** + expected.json band tests
 
 ---
 
 ## Do not recreate
 
-- Do not re-scaffold compose/settings/health
-- Do not re-author DB models/migration `499df124434b`
-- Do not regenerate PayOrbit trees/importers/gold incidents — calibrate sample data later if needed
-- Do not reimplement diff/import/graph parsers once commit 4 lands
-- Do not `gh repo create`; remote already exists
-- Do not commit `PROJECT_BLASTRADIUS_PLAN.md`
-- Do not require paid APIs for MVP
+- Do not re-scaffold / re-author models migration / PayOrbit trees / diff-graph parsers
+- Do not reimplement embeddings/vector/retrieval once commit 5 lands
+- Do not commit `PROJECT_BLASTRADIUS_PLAN.md` or require paid APIs
 
 ---
 
 ## Local runtime notes
 
-- Prefer: `make up` (postgres+redis) → `uv sync --extra dev` → `make migrate` → `make api`
-- `.env` is gitignored (copy from `.env.example`)
-- Docker must be running for datastore verification
+- `make up` → `make migrate` → `make api`
+- CI tests: `APP_MODE=ci EMBEDDING_PROVIDER=hash`
+- Local demo embeddings: sentence-transformers (downloads once)
+- Chroma path: `./data/chroma` (gitignored)

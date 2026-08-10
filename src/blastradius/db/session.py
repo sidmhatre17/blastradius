@@ -23,6 +23,15 @@ def get_session_factory(settings: Settings | None = None) -> async_sessionmaker[
     return _session_factory
 
 
+async def reset_engine() -> None:
+    """Dispose singleton engine (needed between pytest event loops)."""
+    global _engine, _session_factory
+    if _engine is not None:
+        await _engine.dispose()
+    _engine = None
+    _session_factory = None
+
+
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     factory = get_session_factory()
     async with factory() as session:
