@@ -4,6 +4,8 @@ COMPOSE ?= docker compose
 UV ?= uv
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
+API ?= http://$(API_HOST):$(API_PORT)
+SAMPLE_ROOT ?= $(CURDIR)/data
 
 ## Datastores only (recommended on Mac)
 up:
@@ -23,7 +25,7 @@ worker:
 	$(UV) run arq blastradius.workers.settings.WorkerSettings
 
 ui:
-	API_BASE_URL=http://127.0.0.1:$(API_PORT) $(UV) run streamlit run apps/ui/app.py --server.port 8501 --server.address 127.0.0.1
+	API_BASE_URL=$(API) $(UV) run streamlit run apps/ui/app.py --server.port 8501 --server.address 127.0.0.1
 
 migrate:
 	$(UV) run alembic upgrade head
@@ -32,26 +34,25 @@ migrate-rev:
 	$(UV) run alembic revision --autogenerate -m "$(m)"
 
 seed:
-	@echo "Seed stub — /demo/seed lands later"
-	@exit 1
+	curl -sf -X POST "$(API)/api/v1/demo/seed" | python3 -m json.tool
 
 analyze-sample:
-	@echo "Analyze-sample stub — lands with analyze API"
-	@exit 1
+	$(UV) run python scripts/analyze_sample.py --api $(API)
 
 eval-gold:
-	@echo "Eval-gold stub — scripts/eval_gold.py lands later"
-	@exit 1
+	APP_MODE=$${APP_MODE:-ci} EMBEDDING_PROVIDER=$${EMBEDDING_PROVIDER:-hash} LLM_PROVIDER=$${LLM_PROVIDER:-template} \
+		$(UV) run python scripts/eval_gold.py
 
-demo:
-	@echo "Demo stub — wires up + migrate + seed + analyze-sample + eval-gold later"
-	@exit 1
+demo: up migrate
+	@echo "Start API in another terminal: make api"
+	@echo "Then: make seed && make analyze-sample && make eval-gold"
+	@echo "Or run one-shot in-process eval (seeds via ASGI): make eval-gold"
 
 test:
-	APP_MODE=ci $(UV) run pytest -q
+	APP_MODE=ci EMBEDDING_PROVIDER=hash LLM_PROVIDER=template $(UV) run pytest -q
 
 lint:
 	$(UV) run ruff check src tests apps scripts
 
 health:
-	curl -sf "http://$(API_HOST):$(API_PORT)/health" | python3 -m json.tool
+	curl -sf "$(API)/health" | python3 -m json.tool

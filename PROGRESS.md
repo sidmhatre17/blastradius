@@ -4,68 +4,47 @@ Living log of what exists so we don’t recreate work or lose context.
 Update this file **at the end of every slice**, before asking to commit.
 
 Remote: https://github.com/sidmhatre17/blastradius.git  
-Plan (local only): `/Users/sid/Documents/resume/updated/PROJECT_BLASTRADIUS_PLAN.md`  
-Conflict order: **§32 > §31 > §29 > earlier**
+Plan (local only): `/Users/sid/Documents/resume/updated/PROJECT_BLASTRADIUS_PLAN.md`
 
 ---
 
-## Owner preferences (locked)
-
-| Preference | Choice |
-|------------|--------|
-| Workspace | `/Users/sid/Documents/resume/blastradius` |
-| Branch | `main` |
-| Topology | Docker postgres+redis; api/worker/ui on host via `uv` |
-| Commit / push | Ask first |
-| Attribution | No Cursor trailers |
-
----
-
-## Commit map status
+## Commit map
 
 | # | Commit | Status | SHA |
 |---|--------|--------|-----|
-| 1–6 | scaffold → scorer | **Pushed** | through `19da17b` |
-| 7 | analyze API + explainers + worker | **Pushed** | `e28f2d2` |
-| 8 | streamlit demo ui | **Ready to commit** | verified |
-| 9 | docs | Not started | |
-| 10 | eval harness | Not started | |
+| 1–8 | scaffold → streamlit UI | **Pushed** | through `2a5cb5a` |
+| 9 | docs (README/competitors/…) | Not started | |
+| 10 | demo seed + eval harness | **Ready to commit** | verified |
 | 11 | release v0.1.0 | Not started | |
 
 ---
 
-## Streamlit UI (commit 8 — pending)
+## This slice (pending commit)
 
-- `apps/ui/app.py` — single-page demo:
-  1. Health + Seed PayOrbit (calls repos/incidents ingest)
-  2. Sample PR dropdown + paste diff
-  3. Score / tier / summary
-  4. Factors table
-  5. Similar incidents
-  6. Blast radius (`streamlit-agraph` if installed, else tables)
-  7. Session history (in-memory; no list API yet)
-- Default analyze is **sync** + spinner; optional async poll checkbox
-- `make ui` sets `API_BASE_URL`; `.env.example` documents it
+- `POST /api/v1/demo/seed` — idempotent PayOrbit repo + incidents
+- `scripts/eval_gold.py` — recall@3 → `artifacts/eval_recall.md` (gitignored output)
+- `scripts/analyze_sample.py` — HTTP analyze all sample PRs vs expected.json
+- `artifacts/demo_report.md` — metrics template (tracked)
+- Makefile: `seed`, `analyze-sample`, `eval-gold`, `demo` helpers
+- Test: `tests/test_demo_seed.py`
 
-**Verified:** ruff clean; full pytest still green (30). UI is thin client — no new backend tests required.
+**Verified:** 31 tests passed; `eval_gold` recall@3 = **100%** (3/3) in `APP_MODE=ci`.
 
 ---
 
 ## Next
 
-1. Commit/push UI slice
-2. `/demo/seed` + `make demo` (plan item 15)
-3. Docs + eval harness + polish
+1. Commit/push this slice
+2. Docs: README, architecture, risk_model, demo_script, competitors
 
 ---
 
-## Local demo path
+## Demo commands
 
 ```bash
 make up && make migrate
-make api          # terminal 1
-make ui           # terminal 2
-# optional async: make worker
+make api                 # terminal 1
+make seed && make analyze-sample
+make eval-gold           # in-process seed+recall (CI-friendly)
+make ui                  # terminal 2
 ```
-
-Open http://127.0.0.1:8501 → Seed → pick `pr_common_client.diff` → Analyze.

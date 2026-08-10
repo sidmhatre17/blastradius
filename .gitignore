@@ -34,6 +34,10 @@ data/chroma/
 # Artifacts (keep placeholder)
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/demo_report.md
 
 # uv / tooling
 .python-version
+
+# local chroma variants
+data/chroma*/

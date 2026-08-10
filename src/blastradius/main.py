@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from blastradius.api.analyze import router as analyze_router
+from blastradius.api.demo import router as demo_router
 from blastradius.api.health import router as health_router
 from blastradius.api.incidents import router as incidents_router
 from blastradius.api.repos import router as repos_router
@@ -15,6 +16,7 @@ def create_app() -> FastAPI:
     app.include_router(repos_router)
     app.include_router(incidents_router)
     app.include_router(analyze_router)
+    app.include_router(demo_router)
     return app
 
 
