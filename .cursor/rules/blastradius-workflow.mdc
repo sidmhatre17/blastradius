@@ -38,6 +38,7 @@ Do not default to all-in-Docker unless the owner asks.
 2. **Never push without the owner's explicit OK** after they manually review.
 3. Incremental commits per plan §25 — one logical slice per commit; no mega-commit.
 4. Do not include `PROJECT_BLASTRADIUS_PLAN.md` in this repo.
+5. **Do not commit or push `*.md` files** (README, docs, PROGRESS, IMPLEMENTATION, etc.) unless the owner explicitly asks. Keep plan + `IMPLEMENTATION.md` under `/Users/sid/Documents/resume/updated/`. Other non-md changes (service logic, config, `.gitignore`, rules) may be committed/pushed when needed after the usual ask gates.
 
 ## Attribution (strict — never break)
 

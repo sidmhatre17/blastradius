@@ -41,3 +41,6 @@ artifacts/*
 
 # local chroma variants
 data/chroma*/
+
+# Local Streamlit config
+.streamlit/
